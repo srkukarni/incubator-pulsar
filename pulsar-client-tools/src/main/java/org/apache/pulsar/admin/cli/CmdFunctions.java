@@ -81,6 +81,7 @@ public class CmdFunctions extends CmdBase {
 
     private final LocalRunner localRunner;
     private final K8Runner k8Runner;
+    private final K8Killer k8Killer;
     private final CreateFunction creater;
     private final DeleteFunction deleter;
     private final UpdateFunction updater;
@@ -752,6 +753,7 @@ public class CmdFunctions extends CmdBase {
         super("functions", admin);
         localRunner = new LocalRunner();
         k8Runner = new K8Runner();
+        k8Killer = new K8Killer();
         creater = new CreateFunction();
         deleter = new DeleteFunction();
         updater = new UpdateFunction();
@@ -762,6 +764,7 @@ public class CmdFunctions extends CmdBase {
         triggerer = new TriggerFunction();
         jcommander.addCommand("localrun", getLocalRunner());
         jcommander.addCommand("k8run", getK8Runner());
+        jcommander.addCommand("k8kill", getK8Killer());
         jcommander.addCommand("create", getCreater());
         jcommander.addCommand("delete", getDeleter());
         jcommander.addCommand("update", getUpdater());
@@ -780,6 +783,11 @@ public class CmdFunctions extends CmdBase {
     @VisibleForTesting
     K8Runner getK8Runner() {
         return k8Runner;
+    }
+
+    @VisibleForTesting
+    K8Killer getK8Killer() {
+        return k8Killer;
     }
 
     @VisibleForTesting
