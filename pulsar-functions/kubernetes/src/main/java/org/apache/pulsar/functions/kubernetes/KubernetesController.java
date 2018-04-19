@@ -93,6 +93,8 @@ public class KubernetesController {
             instanceCodeFile = pythonInstanceFile;
         }
         final String fqn = FunctionDetailsUtils.getFullyQualifiedName(instanceConfig.getFunctionDetails());
+        
+        // there are other characters that are not allowed in a pod name. see the heron code for the regex check
         if (!fqn.equals(fqn.toLowerCase())) {
             throw new RuntimeException("K8S scheduler does not allow upper case fqns.");
         }
@@ -278,14 +280,16 @@ public class KubernetesController {
                 .valueFrom(new V1EnvVarSource()
                         .fieldRef(new V1ObjectFieldSelector()
                                 .fieldPath(KubernetesConstants.POD_IP)));
-
+        */
+        
+        // This env variable is needed to get the shard id
         final V1EnvVar envVarPodName = new V1EnvVar();
         envVarPodName.name(KubernetesConstants.ENV_POD_NAME)
                 .valueFrom(new V1EnvVarSource()
                         .fieldRef(new V1ObjectFieldSelector()
                                 .fieldPath(KubernetesConstants.POD_NAME)));
         container.setEnv(Arrays.asList(envVarHost, envVarPodName));
-        */
+        
 
 
         // set container resources
