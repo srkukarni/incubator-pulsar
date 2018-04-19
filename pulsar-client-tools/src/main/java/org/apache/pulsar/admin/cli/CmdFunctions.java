@@ -46,6 +46,9 @@ import org.apache.pulsar.client.admin.internal.FunctionsImpl;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.common.naming.TopicName;
 import org.apache.pulsar.functions.api.Function;
+import org.apache.pulsar.functions.kubernetes.KubernetesConfig;
+import org.apache.pulsar.functions.kubernetes.KubernetesController;
+import org.apache.pulsar.functions.kubernetes.Resource;
 import org.apache.pulsar.functions.utils.FunctionConfig;
 import org.apache.pulsar.functions.api.SerDe;
 import org.apache.pulsar.functions.api.utils.DefaultSerDe;
@@ -565,6 +568,15 @@ public class CmdFunctions extends CmdBase {
         @Parameter(names = "--brokerServiceUrl", description = "The URL for the Pulsar broker")
         protected String brokerServiceUrl;
 
+        @Parameter(names = "--k8Config", description = "Kubernetes config file", required = true)
+        protected String k8ConfgiFile;
+
+        @Parameter(names = "--cpu", description = "Container CPU Allocation", required = true)
+        protected String cpu;
+
+        @Parameter(names = "--ram", description = "Container RAM Allocation", required = true)
+        protected String ram;
+
         @Override
         void runCmd() throws Exception {
             if (!areAllRequiredFieldsPresent(functionConfig)) {
@@ -578,42 +590,27 @@ public class CmdFunctions extends CmdBase {
             if (serviceUrl == null) {
                 serviceUrl = "pulsar://localhost:6650";
             }
-            try (ProcessRuntimeFactory containerFactory = new ProcessRuntimeFactory(
-                    serviceUrl, null, null, null)) {
-                List<RuntimeSpawner> spawners = new LinkedList<>();
-                for (int i = 0; i < functionConfig.getParallelism(); ++i) {
-                    InstanceConfig instanceConfig = new InstanceConfig();
-                    instanceConfig.setFunctionDetails(convertProto2(functionConfig));
-                    // TODO: correctly implement function version and id
-                    instanceConfig.setFunctionVersion(UUID.randomUUID().toString());
-                    instanceConfig.setFunctionId(UUID.randomUUID().toString());
-                    instanceConfig.setInstanceId(Integer.toString(i));
-                    instanceConfig.setMaxBufferedTuples(1024);
-                    instanceConfig.setPort(Utils.findAvailablePort());
-                    RuntimeSpawner runtimeSpawner = new RuntimeSpawner(
-                            instanceConfig,
-                            userCodeFile,
-                            containerFactory,
-                            null);
-                    spawners.add(runtimeSpawner);
-                    runtimeSpawner.start();
-                }
-                Runtime.getRuntime().addShutdownHook(new Thread() {
-                    public void run() {
-                        log.info("Shutting down the localrun runtimeSpawner ...");
-                        for (RuntimeSpawner spawner : spawners) {
-                            spawner.close();
-                        }
-                    }
-                });
-                for (RuntimeSpawner spawner : spawners) {
-                    spawner.join();
-                    log.info("RuntimeSpawner quit because of {}", spawner.getRuntime().getDeathException());
-                }
-
-            }
+            KubernetesController k8Controller = new KubernetesController(k8ConfgiFile);
+            InstanceConfig instanceConfig = new InstanceConfig();
+            instanceConfig.setFunctionDetails(convertProto2(functionConfig));
+            // TODO: correctly implement function version and id
+            instanceConfig.setFunctionVersion(UUID.randomUUID().toString());
+            instanceConfig.setFunctionId(UUID.randomUUID().toString());
+            instanceConfig.setMaxBufferedTuples(1024);
+            k8Controller.create(instanceConfig, userCodeFile, serviceUrl, new Resource(cpu, ram));
         }
+    }
 
+    @Parameters(commandDescription = "Kill Pulsar Function running in Kubernetes cluster")
+    class K8Killer extends FunctionCommand {
+        @Parameter(names = "--k8Config", description = "Kubernetes config file", required = true)
+        protected String k8ConfgiFile;
+
+        @Override
+        void runCmd() throws Exception {
+            KubernetesController k8Controller = new KubernetesController(k8ConfgiFile);
+            k8Controller.delete(tenant, namespace, functionName);
+        }
     }
 
     @Parameters(commandDescription = "Create a Pulsar Function in cluster mode (i.e. deploy it on a Pulsar cluster)")

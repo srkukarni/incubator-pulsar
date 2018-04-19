@@ -34,25 +34,25 @@ import java.util.Map;
 @EqualsAndHashCode
 @ToString
 @Accessors(chain = true)
-public class KubernetesConfig implements Serializable {
+public class Resource implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    private String k8Uri;
-    private String jobNamespace;
-    private String pulsarDockerImageName;
+    private String cpu;
+    private String ram;
 
-    public static KubernetesConfig load(String yamlFile) throws IOException {
+    public static Resource load(String yamlFile) throws IOException {
         ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-        return mapper.readValue(new File(yamlFile), KubernetesConfig.class);
+        return mapper.readValue(new File(yamlFile), Resource.class);
     }
 
-    public static KubernetesConfig load(Map<String, String> map) throws IOException {
+    public static Resource load(Map<String, String> map) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
-        return mapper.readValue(new ObjectMapper().writeValueAsString(map), KubernetesConfig.class);
+        return mapper.readValue(new ObjectMapper().writeValueAsString(map), Resource.class);
     }
 
-    public boolean areAllFieldsPresent() {
-        return k8Uri != null && jobNamespace != null && pulsarDockerImageName != null;
+    public Resource(String cpu, String ram) {
+        this.cpu = cpu;
+        this.ram = ram;
     }
 }

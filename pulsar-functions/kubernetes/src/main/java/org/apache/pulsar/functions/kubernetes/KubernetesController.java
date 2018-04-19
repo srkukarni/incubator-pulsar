@@ -77,13 +77,16 @@ public class KubernetesController {
     static final String javaInstanceFile = "/javaInstance.jar";
     static final String pythonInstanceFile = "/python_instance_main.py";
 
-    KubernetesController(String yamlFile) throws IOException {
+    public KubernetesController(String yamlFile) throws IOException {
         kubernetesConfig = KubernetesConfig.load(yamlFile);
+        if (!kubernetesConfig.areAllFieldsPresent()) {
+            throw new RuntimeException("Missing arguments");
+        }
         final ApiClient apiClient = new ApiClient().setBasePath(kubernetesConfig.getK8Uri());
         client = new AppsV1beta1Api(apiClient);
     }
 
-    void create(InstanceConfig instanceConfig, String userCodeFile, String pulsarServiceUrl) {
+    public void create(InstanceConfig instanceConfig, String userCodeFile, String pulsarServiceUrl, Resource resource) {
         instanceConfig.setInstanceId("$" + ENV_SHARD_ID);
         instanceConfig.setPort(instancePort);
         String instanceCodeFile;
@@ -98,7 +101,7 @@ public class KubernetesController {
         }
 
         final V1beta1StatefulSet statefulSet = createStatefulSet(instanceConfig, instanceCodeFile,
-                userCodeFile, pulsarServiceUrl);
+                userCodeFile, pulsarServiceUrl, resource);
 
         try {
             final Response response =
@@ -115,7 +118,7 @@ public class KubernetesController {
         }
     }
 
-    void delete(String tenant, String namespace, String name) {
+    public void delete(String tenant, String namespace, String name) {
         try {
             final V1DeleteOptions options = new V1DeleteOptions();
             options.setGracePeriodSeconds(0L);
@@ -157,7 +160,8 @@ public class KubernetesController {
     private V1beta1StatefulSet createStatefulSet(InstanceConfig instanceConfig,
                                                  String instanceCodeFile,
                                                  String userCodeFile,
-                                                 String pulsarServiceUrl) {
+                                                 String pulsarServiceUrl,
+                                                 Resource resource) {
         final String jobName = FunctionDetailsUtils.getFullyQualifiedName(instanceConfig.getFunctionDetails());
 
         final V1beta1StatefulSet statefulSet = new V1beta1StatefulSet();
@@ -192,7 +196,7 @@ public class KubernetesController {
         podTemplateSpec.setMetadata(templateMetaData);
 
         final List<String> command = getExecutorCommand(instanceConfig, instanceCodeFile, userCodeFile, pulsarServiceUrl);
-        podTemplateSpec.spec(getPodSpec(command));
+        podTemplateSpec.spec(getPodSpec(command, resource));
 
         statefulSetSpec.setTemplate(podTemplateSpec);
 
@@ -215,7 +219,7 @@ public class KubernetesController {
         return labels;
     }
 
-    private V1PodSpec getPodSpec(List<String> executorCommand) {
+    private V1PodSpec getPodSpec(List<String> executorCommand, Resource resource) {
         final V1PodSpec podSpec = new V1PodSpec();
 
         // set the termination period to 0 so pods can be deleted quickly
@@ -226,7 +230,7 @@ public class KubernetesController {
         podSpec.setTolerations(getTolerations());
 
         podSpec.containers(Collections.singletonList(
-                getContainer(executorCommand, kubernetesConfig.getCpu(), kubernetesConfig.getRam())));
+                getContainer(executorCommand, resource)));
 
         // addVolumesIfPresent(podSpec);
 
@@ -261,8 +265,7 @@ public class KubernetesController {
     }
     */
 
-    private V1Container getContainer(List<String> executorCommand, String cpu,
-                                     String ram) {
+    private V1Container getContainer(List<String> executorCommand, Resource resource) {
         final V1Container container = new V1Container().name("executor");
 
         // set up the container images
@@ -291,8 +294,8 @@ public class KubernetesController {
         // set container resources
         final V1ResourceRequirements resourceRequirements = new V1ResourceRequirements();
         final Map<String, Quantity> requests = new HashMap<>();
-        requests.put("memory", Quantity.fromString(ram));
-        requests.put("cpu", Quantity.fromString(cpu));
+        requests.put("memory", Quantity.fromString(resource.getRam()));
+        requests.put("cpu", Quantity.fromString(resource.getCpu()));
         resourceRequirements.setRequests(requests);
         container.setResources(resourceRequirements);
 
