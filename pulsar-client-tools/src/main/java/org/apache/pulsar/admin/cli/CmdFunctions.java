@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.net.MalformedURLException;
+import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -530,6 +531,7 @@ public class CmdFunctions extends CmdBase {
                     instanceConfig.setFunctionId(UUID.randomUUID().toString());
                     instanceConfig.setInstanceId(Integer.toString(i));
                     instanceConfig.setMaxBufferedTuples(1024);
+                    instanceConfig.setPort(Utils.findAvailablePort());
                     RuntimeSpawner runtimeSpawner = new RuntimeSpawner(
                             instanceConfig,
                             userCodeFile,
