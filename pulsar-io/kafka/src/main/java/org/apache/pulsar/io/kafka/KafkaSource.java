@@ -103,7 +103,7 @@ public abstract class KafkaSource<V> extends PushSource<V> {
 
     public void start() {
         runnerThread = new Thread(() -> {
-            LOG.info("Starting kafka source");
+            LOG.info("Starting kafka source {}", kafkaSourceConfig);
             consumer = new KafkaConsumer<>(props);
             consumer.subscribe(Arrays.asList(kafkaSourceConfig.getTopic()));
             LOG.info("Kafka source started.");
