@@ -29,6 +29,8 @@ import org.apache.pulsar.io.core.PushSource;
 import org.apache.pulsar.io.core.Record;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.apache.logging.log4j.ThreadContext;
+
 
 import java.util.Arrays;
 import java.util.Map;
@@ -47,6 +49,9 @@ public abstract class KafkaSource<V> extends PushSource<V> {
     private Properties props;
     private KafkaSourceConfig kafkaSourceConfig;
     Thread runnerThread;
+    String sanjeev_fqn;
+    String sanjeev_functionname;
+    String sanjeev_instance;
 
     private java.util.function.Consumer<Record<V>> consumeFunction;
 
@@ -103,7 +108,13 @@ public abstract class KafkaSource<V> extends PushSource<V> {
     }
 
     public void start() {
+        sanjeev_fqn = ThreadContext.get("function");
+        sanjeev_functionname = ThreadContext.get("functionname");
+        sanjeev_instance = ThreadContext.get("instance");
         runnerThread = new Thread(() -> {
+            ThreadContext.put("function", sanjeev_fqn);
+            ThreadContext.put("functionname", sanjeev_functionname);
+            ThreadContext.put("instance", sanjeev_instance);
             LOG.info("Starting kafka source {}", kafkaSourceConfig);
             consumer = new KafkaConsumer<>(props);
             consumer.subscribe(Arrays.asList(kafkaSourceConfig.getTopic()));
