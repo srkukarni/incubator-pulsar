@@ -52,6 +52,7 @@ public abstract class KafkaSource<V> extends PushSource<V> {
 
     @Override
     public void open(Map<String, Object> config) throws Exception {
+        LOG.info("SANJEEV CAME in OPEN");
         kafkaSourceConfig = KafkaSourceConfig.load(config);
         if (kafkaSourceConfig.getTopic() == null
                 || kafkaSourceConfig.getBootstrapServers() == null
@@ -59,6 +60,7 @@ public abstract class KafkaSource<V> extends PushSource<V> {
                 || kafkaSourceConfig.getFetchMinBytes() == 0
                 || kafkaSourceConfig.getAutoCommitIntervalMs() == 0
                 || kafkaSourceConfig.getSessionTimeoutMs() == 0) {
+            LOG.info("SANJEEV FAILED in OPEN");
             throw new IllegalArgumentException("Required property not set.");
         }
 
@@ -73,12 +75,14 @@ public abstract class KafkaSource<V> extends PushSource<V> {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, kafkaSourceConfig.getKeyDeserializationClass());
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, kafkaSourceConfig.getValueDeserializationClass());
 
+        LOG.info("SANJEEV ABOUT TO START in OPEN");
         this.start();
-
+        LOG.info("SANJEEV STARTED in OPEN");
     }
 
     @Override
     public void setConsumer(java.util.function.Consumer<Record<V>> consumerFunction) {
+        LOG.info("SANJEEV SETTING CONSUMER IN KAFKA SOURCE");
         this.consumeFunction = consumerFunction;
     }
 
@@ -107,9 +111,10 @@ public abstract class KafkaSource<V> extends PushSource<V> {
             while(true){
                 consumerRecords = consumer.poll(1000);
                 CompletableFuture<?>[] futures = new CompletableFuture<?>[consumerRecords.count()];
+                LOG.info("consumer.poll returned {}", consumerRecords.count());
                 int index = 0;
                 for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
-                    LOG.debug("Record received from kafka, key: {}. value: {}", consumerRecord.key(), consumerRecord.value());
+                    LOG.info("Record received from kafka, key: {}. value: {}", consumerRecord.key(), consumerRecord.value());
                     KafkaRecord<V> record = new KafkaRecord<>(consumerRecord, extractValue(consumerRecord));
                     consumeFunction.accept(record);
                     futures[index] = record.getCompletableFuture();
