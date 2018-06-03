@@ -119,7 +119,13 @@ public abstract class KafkaSource<V> extends PushSource<V> {
                 int index = 0;
                 for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
                     LOG.info("Sanjeev Record received from kafka, key: {}. value: {}", consumerRecord.key(), consumerRecord.value());
-                    V v = extractValue(consumerRecord);
+                    V v;
+                    try {
+                        v = extractValue(consumerRecord);
+                    } catch (Exception ex) {
+                        LOG.info("Caught Exception", ex);
+                        throw ex;
+                    }
                     LOG.info("Extracted value is {}", v);
                     KafkaRecord<V> record = new KafkaRecord<>(consumerRecord, v);
                     LOG.info("Instantiated kafkarecord {}", record);
