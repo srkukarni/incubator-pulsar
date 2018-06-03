@@ -118,7 +118,7 @@ public abstract class KafkaSource<V> extends PushSource<V> {
                 LOG.info("consumer.poll returned {}", consumerRecords.count());
                 int index = 0;
                 for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
-                    LOG.info("Record received from kafka, key: {}. value: {}", consumerRecord.key(), consumerRecord.value());
+                    LOG.info("Sanjeev Record received from kafka, key: {}. value: {}", consumerRecord.key(), consumerRecord.value());
                     KafkaRecord<V> record = new KafkaRecord<>(consumerRecord, extractValue(consumerRecord));
                     LOG.info("Instantiated kafkarecord {}", record);
                     consume(record);
