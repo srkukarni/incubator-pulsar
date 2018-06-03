@@ -120,7 +120,9 @@ public abstract class KafkaSource<V> extends PushSource<V> {
                 for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
                     LOG.info("Record received from kafka, key: {}. value: {}", consumerRecord.key(), consumerRecord.value());
                     KafkaRecord<V> record = new KafkaRecord<>(consumerRecord, extractValue(consumerRecord));
+                    LOG.info("Instantiated kafkarecord {}", record);
                     consume(record);
+                    LOG.info("Just after consume");
                     futures[index] = record.getCompletableFuture();
                     index++;
                     LOG.info("consumed with length {}", queue.size());
