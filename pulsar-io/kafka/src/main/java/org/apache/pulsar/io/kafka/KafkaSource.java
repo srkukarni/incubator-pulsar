@@ -53,8 +53,6 @@ public abstract class KafkaSource<V> extends PushSource<V> {
     String sanjeev_functionname;
     String sanjeev_instance;
 
-    private java.util.function.Consumer<Record<V>> consumeFunction;
-
     @Override
     public void open(Map<String, Object> config) throws Exception {
         LOG.info("SANJEEV CAME in OPEN");
@@ -84,12 +82,6 @@ public abstract class KafkaSource<V> extends PushSource<V> {
         LOG.info("SANJEEV ABOUT TO START in OPEN");
         this.start();
         LOG.info("SANJEEV STARTED in OPEN");
-    }
-
-    @Override
-    public void setConsumer(java.util.function.Consumer<Record<V>> consumerFunction) {
-        LOG.info("SANJEEV SETTING CONSUMER IN KAFKA SOURCE");
-        this.consumeFunction = consumerFunction;
     }
 
     @Override
@@ -128,7 +120,7 @@ public abstract class KafkaSource<V> extends PushSource<V> {
                 for (ConsumerRecord<byte[], byte[]> consumerRecord : consumerRecords) {
                     LOG.info("Record received from kafka, key: {}. value: {}", consumerRecord.key(), consumerRecord.value());
                     KafkaRecord<V> record = new KafkaRecord<>(consumerRecord, extractValue(consumerRecord));
-                    consumeFunction.accept(record);
+                    consume(record);
                     futures[index] = record.getCompletableFuture();
                     index++;
                 }
