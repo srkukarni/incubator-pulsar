@@ -123,12 +123,18 @@ public abstract class KafkaSource<V> extends PushSource<V> {
                     consume(record);
                     futures[index] = record.getCompletableFuture();
                     index++;
+                    LOG.info("consumed with length {}", queue.size());
                 }
                 if (!kafkaSourceConfig.isAutoCommitEnabled()) {
+                    LOG.info("auto commit not ernabled with length {}", queue.size());
                     try {
+                        LOG.info("doing wait for all futures with length {}", queue.size());
                         CompletableFuture.allOf(futures).get();
+                        LOG.info("done wait for all futures with length {}", queue.size());
                         consumer.commitSync();
+                        LOG.info("done commitsync for all futures with length {}", queue.size());
                     } catch (ExecutionException | InterruptedException ex) {
+                        LOG.info("some exception while waiting with length {}", queue.size(), ex);
                         break;
                     }
                 }

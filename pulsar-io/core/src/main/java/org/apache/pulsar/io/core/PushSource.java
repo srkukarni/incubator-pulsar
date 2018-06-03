@@ -36,7 +36,7 @@ import java.util.function.Consumer;
  */
 public abstract class PushSource<T> implements Source<T> {
 
-    private LinkedBlockingQueue<Record<T>> queue;
+    protected LinkedBlockingQueue<Record<T>> queue;
     private static final int DEFAULT_QUEUE_LENGTH = 1000;
 
     public PushSource() {
