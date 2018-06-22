@@ -80,6 +80,7 @@ public class PulsarSource<T> implements Source<T> {
             consumerBuilder.ackTimeout(pulsarSourceConfig.getTimeoutMs(), TimeUnit.MILLISECONDS);
         }
         this.inputConsumer = consumerBuilder.subscribe();
+        log.info("SANJEEV SUBSCRIBED to input");
     }
 
     @Override
