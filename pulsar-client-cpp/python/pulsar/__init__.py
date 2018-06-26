@@ -457,7 +457,7 @@ class Client:
 
         conf = _pulsar.ConsumerConfiguration()
         conf.consumer_type(consumer_type)
-        conf.read_compacted(is_read_compacted)
+        # conf.read_compacted(is_read_compacted)
         if message_listener:
             conf.message_listener(message_listener)
         conf.receiver_queue_size(receiver_queue_size)
