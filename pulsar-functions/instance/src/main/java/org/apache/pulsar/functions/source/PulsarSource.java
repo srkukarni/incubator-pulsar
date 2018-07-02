@@ -33,10 +33,10 @@ import org.apache.pulsar.functions.api.SerDe;
 import org.apache.pulsar.functions.api.utils.DefaultSerDe;
 import org.apache.pulsar.functions.instance.InstanceUtils;
 import org.apache.pulsar.functions.utils.FunctionConfig;
+import org.apache.pulsar.functions.utils.Reflections;
 import org.apache.pulsar.functions.utils.Utils;
 import org.apache.pulsar.io.core.Record;
 import org.apache.pulsar.io.core.Source;
-import org.jboss.util.Classes;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -133,6 +133,7 @@ public class PulsarSource<T> implements Source<T> {
                 .partitionId(String.format("%s-%s", topicName, partitionId))
                 .recordSequence(Utils.getSequenceId(message.getMessageId()))
                 .topicName(topicName)
+                .properties(message.getProperties())
                 .ackFunction(() -> {
                     if (pulsarSourceConfig.getProcessingGuarantees() == FunctionConfig.ProcessingGuarantees.EFFECTIVELY_ONCE) {
                         inputConsumer.acknowledgeCumulativeAsync(message);
@@ -158,7 +159,7 @@ public class PulsarSource<T> implements Source<T> {
     @VisibleForTesting
     void setupSerDe() throws ClassNotFoundException {
 
-        Class<?> typeArg = Classes.loadClass(this.pulsarSourceConfig.getTypeClassName(),
+        Class<?> typeArg = Reflections.loadClass(this.pulsarSourceConfig.getTypeClassName(),
                 Thread.currentThread().getContextClassLoader());
 
         if (Void.class.equals(typeArg)) {

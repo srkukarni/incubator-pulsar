@@ -60,22 +60,33 @@ import com.google.common.collect.Sets;
  */
 public class BrokerBkEnsemblesTests {
     protected static int BROKER_SERVICE_PORT = 16650;
-    PulsarService pulsar;
+    protected PulsarService pulsar;
     ServiceConfiguration config;
 
     URL adminUrl;
-    PulsarAdmin admin;
+    protected PulsarAdmin admin;
 
     LocalBookkeeperEnsemble bkEnsemble;
 
     private final int ZOOKEEPER_PORT = 12759;
     protected final int BROKER_WEBSERVICE_PORT = 15782;
 
+    protected final int bkBasePort = 5001;
+    private final int numberOfBookies;
+
+    public BrokerBkEnsemblesTests() {
+        this(3);
+    }
+
+    public BrokerBkEnsemblesTests(int numberOfBookies) {
+        this.numberOfBookies = numberOfBookies;
+    }
+
     @BeforeMethod
-    void setup() throws Exception {
+    protected void setup() throws Exception {
         try {
             // start local bookie and zookeeper
-            bkEnsemble = new LocalBookkeeperEnsemble(3, ZOOKEEPER_PORT, 5001);
+            bkEnsemble = new LocalBookkeeperEnsemble(numberOfBookies, ZOOKEEPER_PORT, 5001);
             bkEnsemble.start();
 
             // start pulsar service
@@ -107,7 +118,7 @@ public class BrokerBkEnsemblesTests {
     }
 
     @AfterMethod
-    void shutdown() throws Exception {
+    protected void shutdown() throws Exception {
         try {
             admin.close();
             pulsar.close();
