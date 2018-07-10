@@ -20,8 +20,6 @@ package org.apache.pulsar.tests.integration.functions;
 
 import static org.testng.Assert.assertTrue;
 
-import com.google.common.io.Files;
-import java.io.File;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.tests.containers.WorkerContainer;
 import org.apache.pulsar.tests.integration.functions.utils.UploadDownloadCommandGenerator;
@@ -32,7 +30,10 @@ import org.testng.annotations.Test;
 @Slf4j
 public class PulsarFunctionsTest extends PulsarFunctionsTestBase {
 
-    @Test
+    //
+    // Tests on uploading/downloading function packages.
+    //
+
     public String checkUpload() throws Exception {
         String bkPkgPath = String.format("%s/%s/%s",
             "tenant-" + randomName(8),
@@ -81,5 +82,7 @@ public class PulsarFunctionsTest extends PulsarFunctionsTestBase {
         assertTrue(output.getStdout().isEmpty());
         assertTrue(output.getStderr().isEmpty());
     }
+
+
 
 }

@@ -18,12 +18,16 @@
  */
 package org.apache.pulsar.tests.containers;
 
+import org.apache.pulsar.tests.DockerUtils;
+
 /**
  * A pulsar container that runs zookeeper.
  */
-public class ZKContainer extends PulsarContainer<ZKContainer> {
+public class ZKContainer<SelfT extends PulsarContainer<SelfT>> extends PulsarContainer<SelfT> {
 
     public static final String NAME = "zookeeper";
+
+    private volatile boolean dumpZkDataBeforeStop = false;
 
     public ZKContainer(String clusterName) {
         super(
@@ -35,4 +39,34 @@ public class ZKContainer extends PulsarContainer<ZKContainer> {
             INVALID_PORT);
     }
 
+    public ZKContainer(String clusterName,
+                       String hostname,
+                       String serviceName,
+                       String serviceEntryPoint,
+                       int servicePort,
+                       int httpPort) {
+        super(
+            clusterName,
+            hostname,
+            serviceName,
+            serviceEntryPoint,
+            servicePort,
+            httpPort);
+    }
+
+    public void enableDumpZkDataBeforeStop(boolean enabled) {
+        this.dumpZkDataBeforeStop = enabled;
+    }
+
+    @Override
+    protected void beforeStop() {
+        super.beforeStop();
+        if (null != containerId && dumpZkDataBeforeStop) {
+            DockerUtils.dumpContainerDirToTargetCompressed(
+                getDockerClient(),
+                containerId,
+                "/pulsar/data/zookeeper"
+            );
+        }
+    }
 }

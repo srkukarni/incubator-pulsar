@@ -28,6 +28,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
+import org.apache.pulsar.tests.DockerUtils;
 import org.testcontainers.containers.GenericContainer;
 
 /**
@@ -41,6 +42,24 @@ public class ChaosContainer<SelfT extends ChaosContainer<SelfT>> extends Generic
     protected ChaosContainer(String clusterName, String image) {
         super(image);
         this.clusterName = clusterName;
+    }
+
+    protected void beforeStop() {
+        if (null == containerId) {
+            return;
+        }
+
+        // dump the container log
+        DockerUtils.dumpContainerLogToTarget(
+            getDockerClient(),
+            containerId
+        );
+    }
+
+    @Override
+    public void stop() {
+        beforeStop();
+        super.stop();
     }
 
     public void tailContainerLog() {
@@ -85,13 +104,13 @@ public class ChaosContainer<SelfT extends ChaosContainer<SelfT>> extends Generic
     public ExecResult execCmd(String... cmd) throws Exception {
         String cmdString = StringUtils.join(cmd, " ");
 
-        log.info("DOCKER.exec({}:{}): Executing ...", containerId, cmdString);
+        log.info("DOCKER.exec({}:{}): Executing ...", containerName.substring(1), cmdString);
 
         ExecResult result = execInContainer(cmd);
 
-        log.info("Docker.exec({}:{}): Done", containerId, cmdString);
-        log.info("Docker.exec({}:{}): Stdout -\n{}", containerId, cmdString, result.getStdout());
-        log.info("Docker.exec({}:{}): Stderr -\n{}", containerId, cmdString, result.getStderr());
+        log.info("Docker.exec({}:{}): Done", containerName.substring(1), cmdString);
+        log.info("Docker.exec({}:{}): Stdout -\n{}", containerName.substring(1), cmdString, result.getStdout());
+        log.info("Docker.exec({}:{}): Stderr -\n{}", containerName.substring(1), cmdString, result.getStderr());
 
         return result;
     }

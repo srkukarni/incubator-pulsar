@@ -21,14 +21,22 @@ package org.apache.pulsar.tests.topologies;
 import static com.google.common.base.Preconditions.checkArgument;
 import static org.apache.pulsar.tests.containers.PulsarContainer.CS_PORT;
 
+import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pulsar.tests.containers.BKContainer;
@@ -39,7 +47,9 @@ import org.apache.pulsar.tests.containers.PulsarContainer;
 import org.apache.pulsar.tests.containers.WorkerContainer;
 import org.apache.pulsar.tests.containers.ZKContainer;
 import org.testcontainers.containers.Container.ExecResult;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 
 /**
  * Pulsar Cluster in containers.
@@ -61,6 +71,7 @@ public class PulsarCluster {
     }
 
     private final PulsarClusterSpec spec;
+
     @Getter
     private final String clusterName;
     private final Network network;
@@ -72,10 +83,13 @@ public class PulsarCluster {
     private final ProxyContainer proxyContainer;
 
     private PulsarCluster(PulsarClusterSpec spec) {
+
         this.spec = spec;
         this.clusterName = spec.clusterName();
         this.network = Network.newNetwork();
-        this.zkContainer = new ZKContainer(clusterName)
+
+        this.zkContainer = new ZKContainer(clusterName);
+        this.zkContainer
             .withNetwork(network)
             .withNetworkAliases(ZKContainer.NAME)
             .withEnv("clusterName", clusterName)
@@ -86,10 +100,12 @@ public class PulsarCluster {
         this.csContainer = new CSContainer(clusterName)
             .withNetwork(network)
             .withNetworkAliases(CSContainer.NAME);
+
         this.bookieContainers = Maps.newTreeMap();
         this.brokerContainers = Maps.newTreeMap();
         this.workerContainers = Maps.newTreeMap();
-        this.proxyContainer = new ProxyContainer(clusterName, "pulsar-proxy")
+
+        this.proxyContainer = new ProxyContainer(clusterName, ProxyContainer.NAME)
             .withNetwork(network)
             .withNetworkAliases("pulsar-proxy")
             .withEnv("zkServers", ZKContainer.NAME)
@@ -170,12 +186,14 @@ public class PulsarCluster {
     }
 
     public void stop() {
-        proxyContainer.stop();
-        workerContainers.values().forEach(WorkerContainer::stop);
-        brokerContainers.values().forEach(BrokerContainer::stop);
-        bookieContainers.values().forEach(BKContainer::stop);
-        csContainer.stop();
-        zkContainer.stop();
+
+        Stream<GenericContainer> list1 = Stream.of(proxyContainer, csContainer, zkContainer);
+        Stream<GenericContainer> list2 =
+            Stream.of(workerContainers.values(), brokerContainers.values(), bookieContainers.values())
+                .flatMap(Collection::stream);
+        Stream<GenericContainer> list3 = Stream.concat(list1, list2);
+        list3.parallel().forEach(GenericContainer::stop);
+
         try {
             network.close();
         } catch (Exception e) {
@@ -183,7 +201,7 @@ public class PulsarCluster {
         }
     }
 
-    public void startFunctionWorkers(int numFunctionWorkers) {
+    public void startFunctionWorkersWithProcessContainerFactory(int numFunctionWorkers) {
         String serviceUrl = "pulsar://pulsar-broker-0:" + PulsarContainer.BROKER_PORT;
         String httpServiceUrl = "http://pulsar-broker-0:" + PulsarContainer.BROKER_HTTP_PORT;
         workerContainers.putAll(runNumContainers(
@@ -193,14 +211,39 @@ public class PulsarCluster {
                 .withNetwork(network)
                 .withNetworkAliases(name)
                 // worker settings
-                .withEnv("workerId", name)
-                .withEnv("workerHostname", name)
-                .withEnv("workerPort", "" + PulsarContainer.BROKER_HTTP_PORT)
-                .withEnv("pulsarFunctionsCluster", clusterName)
-                .withEnv("pulsarServiceUrl", serviceUrl)
-                .withEnv("pulsarWebServiceUrl", httpServiceUrl)
-                .withEnv("clusterName", clusterName)
+                .withEnv("PF_workerId", name)
+                .withEnv("PF_workerHostname", name)
+                .withEnv("PF_workerPort", "" + PulsarContainer.BROKER_HTTP_PORT)
+                .withEnv("PF_pulsarFunctionsCluster", clusterName)
+                .withEnv("PF_pulsarServiceUrl", serviceUrl)
+                .withEnv("PF_pulsarWebServiceUrl", httpServiceUrl)
                 // script
+                .withEnv("clusterName", clusterName)
+                .withEnv("zookeeperServers", ZKContainer.NAME)
+                // bookkeeper tools
+                .withEnv("zkServers", ZKContainer.NAME)
+        ));
+    }
+
+    public void startFunctionWorkersWithThreadContainerFactory(int numFunctionWorkers) {
+        String serviceUrl = "pulsar://pulsar-broker-0:" + PulsarContainer.BROKER_PORT;
+        String httpServiceUrl = "http://pulsar-broker-0:" + PulsarContainer.BROKER_HTTP_PORT;
+        workerContainers.putAll(runNumContainers(
+            "functions-worker",
+            numFunctionWorkers,
+            (name) -> new WorkerContainer(clusterName, name)
+                .withNetwork(network)
+                .withNetworkAliases(name)
+                // worker settings
+                .withEnv("PF_workerId", name)
+                .withEnv("PF_workerHostname", name)
+                .withEnv("PF_workerPort", "" + PulsarContainer.BROKER_HTTP_PORT)
+                .withEnv("PF_pulsarFunctionsCluster", clusterName)
+                .withEnv("PF_pulsarServiceUrl", serviceUrl)
+                .withEnv("PF_pulsarWebServiceUrl", httpServiceUrl)
+                .withEnv("PF_threadContainerFactory_threadGroupName", "pf-container-group")
+                // script
+                .withEnv("clusterName", clusterName)
                 .withEnv("zookeeperServers", ZKContainer.NAME)
                 // bookkeeper tools
                 .withEnv("zkServers", ZKContainer.NAME)
