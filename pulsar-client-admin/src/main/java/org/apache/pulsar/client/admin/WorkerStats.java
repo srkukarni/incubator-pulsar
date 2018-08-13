@@ -18,6 +18,8 @@
  */
 package org.apache.pulsar.client.admin;
 
+import java.util.Collection;
+
 import org.apache.pulsar.functions.proto.InstanceCommunication.Metrics;
 
 /**
@@ -32,4 +34,11 @@ public interface WorkerStats {
      * @throws PulsarAdminException 
      */
     Metrics getFunctionsStats() throws PulsarAdminException;
+    
+    /**
+     * Get worker metrics.
+     * @return
+     * @throws PulsarAdminException
+     */
+    Collection<org.apache.pulsar.common.stats.Metrics> getMetrics() throws PulsarAdminException;
 }
