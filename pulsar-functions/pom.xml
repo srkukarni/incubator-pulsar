@@ -42,6 +42,7 @@
     <module>worker</module>
     <module>secrets</module>
     <module>windowing</module>
+    <module>stats</module>
   </modules>
 
 </project>
