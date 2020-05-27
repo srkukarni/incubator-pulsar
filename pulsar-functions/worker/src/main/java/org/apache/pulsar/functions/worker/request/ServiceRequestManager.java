@@ -23,6 +23,7 @@ import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClientException;
 import org.apache.pulsar.functions.proto.Request.ServiceRequest;
+import org.apache.pulsar.functions.utils.FunctionCommon;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -39,7 +40,9 @@ public class ServiceRequestManager implements AutoCloseable {
         if (log.isDebugEnabled()) {
             log.debug("Submitting Service Request: {}", serviceRequest);
         }
-        return producer.sendAsync(serviceRequest.toByteArray());
+        return producer.newMessage()
+                        .key(FunctionCommon.getFullyQualifiedName(serviceRequest.getFunctionMetaData().getFunctionDetails()))
+                        .value(serviceRequest.toByteArray()).sendAsync();
     }
 
     @Override

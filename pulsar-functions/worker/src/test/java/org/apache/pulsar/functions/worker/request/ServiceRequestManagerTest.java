@@ -18,16 +18,16 @@
  */
 package org.apache.pulsar.functions.worker.request;
 
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.testng.Assert.assertSame;
 
 import java.util.concurrent.CompletableFuture;
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Producer;
+import org.apache.pulsar.client.api.Schema;
+import org.apache.pulsar.client.api.TypedMessageBuilder;
+import org.apache.pulsar.client.impl.TypedMessageBuilderImpl;
+import org.apache.pulsar.functions.proto.Function;
 import org.apache.pulsar.functions.proto.Request.ServiceRequest;
 import org.apache.pulsar.functions.worker.WorkerUtils;
 import org.powermock.core.classloader.annotations.PrepareForTest;
@@ -41,10 +41,13 @@ import org.testng.annotations.Test;
 public class ServiceRequestManagerTest {
 
     private final Producer producer;
+    private final TypedMessageBuilder typedMessageBuilder;
     private final ServiceRequestManager reqMgr;
 
     public ServiceRequestManagerTest() throws Exception {
         this.producer = mock(Producer.class);
+        this.typedMessageBuilder = spy(new TypedMessageBuilderImpl(null, Schema.BYTES));
+        when(producer.newMessage()).thenReturn(this.typedMessageBuilder);
         this.reqMgr = new ServiceRequestManager(producer);
     }
 
@@ -56,15 +59,22 @@ public class ServiceRequestManagerTest {
 
     @Test
     public void testSubmitRequest() throws Exception {
-        ServiceRequest request = ServiceRequest.newBuilder().build();
+        Function.FunctionDetails functionDetails = Function.FunctionDetails.newBuilder()
+                .setTenant("public")
+                .setNamespace("default")
+                .setName("funcionname").build();
+        Function.FunctionMetaData functionMetaData = Function.FunctionMetaData.newBuilder()
+                .setFunctionDetails(functionDetails).build();
+        ServiceRequest request = ServiceRequest.newBuilder()
+                .setFunctionMetaData(functionMetaData).build();
         MessageId msgId = mock(MessageId.class);
 
-        when(producer.sendAsync(any(byte[].class)))
-            .thenReturn(CompletableFuture.completedFuture(msgId));
+        doReturn(CompletableFuture.completedFuture(msgId))
+                .when(typedMessageBuilder).sendAsync();
 
         CompletableFuture<MessageId> submitFuture = reqMgr.submitRequest(request);
         assertSame(msgId, submitFuture.get());
-        verify(producer, times(1)).sendAsync(any(byte[].class));
+        verify(typedMessageBuilder, times(1)).sendAsync();
     }
 
 }

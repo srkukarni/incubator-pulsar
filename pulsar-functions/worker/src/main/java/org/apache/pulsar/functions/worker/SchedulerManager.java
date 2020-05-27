@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
+import lombok.Getter;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.pulsar.client.admin.PulsarAdmin;
@@ -76,8 +77,12 @@ public class SchedulerManager implements AutoCloseable {
     private final ScheduledExecutorService executorService;
     
     private final PulsarAdmin admin;
-    
+
     AtomicBoolean isCompactionNeeded = new AtomicBoolean(false);
+
+    @Getter
+    private AtomicBoolean isMetadataTopicCompactionNeeded = new AtomicBoolean(false);
+
     private static final long DEFAULT_ADMIN_API_BACKOFF_SEC = 60; 
     public static final String HEARTBEAT_TENANT = "pulsar-function";
     public static final String HEARTBEAT_NAMESPACE = "heartbeat";
@@ -154,9 +159,15 @@ public class SchedulerManager implements AutoCloseable {
     private void scheduleCompaction(ScheduledExecutorService executor, long scheduleFrequencySec) {
         if (executor != null) {
             executor.scheduleWithFixedDelay(() -> {
-                if (membershipManager.isLeader() && isCompactionNeeded.get()) {
-                    compactAssignmentTopic();
-                    isCompactionNeeded.set(false);
+                if (membershipManager.isLeader()) {
+                    if (isCompactionNeeded.get()) {
+                        compactAssignmentTopic();
+                        isCompactionNeeded.set(false);
+                    }
+                    if (isMetadataTopicCompactionNeeded.get()) {
+                        compactMetadataTopic();
+                        isMetadataTopicCompactionNeeded.set(false);
+                    }
                 }
             }, scheduleFrequencySec, scheduleFrequencySec, TimeUnit.SECONDS);
         }
@@ -246,6 +257,18 @@ public class SchedulerManager implements AutoCloseable {
             } catch (PulsarAdminException e) {
                 log.error("Failed to trigger compaction", e);
                 executorService.schedule(() -> compactAssignmentTopic(), DEFAULT_ADMIN_API_BACKOFF_SEC,
+                        TimeUnit.SECONDS);
+            }
+        }
+    }
+
+    public void compactMetadataTopic() {
+        if (this.admin != null) {
+            try {
+                this.admin.topics().triggerCompaction(workerConfig.getFunctionMetadataTopic());
+            } catch (PulsarAdminException e) {
+                log.error("Failed to trigger compaction", e);
+                executorService.schedule(() -> compactMetadataTopic(), DEFAULT_ADMIN_API_BACKOFF_SEC,
                         TimeUnit.SECONDS);
             }
         }

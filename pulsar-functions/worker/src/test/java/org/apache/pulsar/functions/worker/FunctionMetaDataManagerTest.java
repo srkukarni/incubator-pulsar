@@ -21,14 +21,11 @@ package org.apache.pulsar.functions.worker;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.pulsar.client.api.MessageId;
 import org.apache.pulsar.client.api.Producer;
@@ -265,10 +262,21 @@ public class FunctionMetaDataManagerTest {
 
     @Test
     public void testProcessRequest() throws PulsarClientException {
-        WorkerConfig workerConfig = new WorkerConfig();
+        testProcessRequest(false);
+    }
+
+    @Test
+    public void testProcessRequestWithMetdataCompaction() throws PulsarClientException {
+        testProcessRequest(true);
+    }
+
+    private void testProcessRequest(boolean metdataCompaction) throws PulsarClientException {
+        WorkerConfig workerConfig = new WorkerConfig().setCompactFunctionMetadataTopic(metdataCompaction);
+        SchedulerManager schedulerManager = mock(SchedulerManager.class);
+        doReturn(new AtomicBoolean()).when(schedulerManager).getIsMetadataTopicCompactionNeeded();
         FunctionMetaDataManager functionMetaDataManager = spy(
                 new FunctionMetaDataManager(workerConfig,
-                        mock(SchedulerManager.class),
+                        schedulerManager,
                         mockPulsarClient()));
 
         Mockito.doNothing().when(functionMetaDataManager).processUpdate(any(Request.ServiceRequest.class));
@@ -295,6 +303,11 @@ public class FunctionMetaDataManagerTest {
 
         verify(functionMetaDataManager, times(1)).proccessDeregister(
                 any(Request.ServiceRequest.class));
+        if (metdataCompaction) {
+            verify(schedulerManager, times(3)).getIsMetadataTopicCompactionNeeded();
+        } else {
+            verify(schedulerManager, times(0)).getIsMetadataTopicCompactionNeeded();
+        }
         verify(functionMetaDataManager).proccessDeregister(serviceRequest);
     }
 

@@ -90,6 +90,7 @@ public class FunctionMetaDataManager implements AutoCloseable {
             Reader<byte[]> reader = pulsarClient.newReader()
                     .topic(this.workerConfig.getFunctionMetadataTopic())
                     .startMessageId(MessageId.earliest)
+                    .readCompacted(workerConfig.isCompactFunctionMetadataTopic())
                     .create();
 
             this.functionMetaDataTopicTailer = new FunctionMetaDataTopicTailer(this, reader);
@@ -278,6 +279,9 @@ public class FunctionMetaDataManager implements AutoCloseable {
                 default:
                     log.warn("Received request with unrecognized type: {}", serviceRequest);
             }
+        }
+        if (workerConfig.isCompactFunctionMetadataTopic()) {
+            schedulerManager.getIsMetadataTopicCompactionNeeded().set(true);
         }
     }
 
